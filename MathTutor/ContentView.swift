@@ -9,51 +9,113 @@ import SwiftUI
 import AVFAudio
 
 struct ContentView: View {
-    @State private var firstNumber = Int.random(in: 1...10)
-    @State private var secondNumber = Int.random(in: 1...10)
-    @State private var guessedNumber = ""
+    @State private var firstNumber = 0
+    @State private var secondNumber = 0
+    @State private var firstNumberEmojis = ""
+    @State private var secondNumberEmojis = ""
     @State private var answer = ""
+    @State private var message = ""
     @State private var audioPlayer: AVAudioPlayer!
-    let emojis = ["🍕", "🍎", "🍏", "🐵", "👽", "🧠", "🧜", "🧙", "🥷", "🐶", "🐹", "🐣", "🦄", "🐝", "🦉", "🦋",
-                  "🦖", "🐙", "🦞", "🐟", "🦔", "🐲", "🌻", "🌍", "🌈", "🍔", "🌮", "🍦", "🍩", "🍪"]
-
+    @State private var textFieldIsDisabled = false
+    @State private var buttonIsDisabled = false
+    @FocusState private var isFocused: Bool
+    
+    private let emojis = ["🍕", "🍎", "🍏", "🐵", "👽", "🧠", "🧜", "🧙", "🥷", "🐶", "🐹", "🐣", "🦄", "🐝", "🦉", "🦋",
+                          "🦖", "🐙", "🦞", "🐟", "🦔", "🐲", "🌻", "🌍", "🌈", "🍔", "🌮", "🍦", "🍩", "🍪"]
+    
+    
     var body: some View {
         VStack {
-// TODO: Number of emojis must equal number
-//            String(emojis[firstNumber])
-//            String(emojis[secondNumber])
-//            Image(emojis[firstNumber])
-//                .resizable()
-//                .scalable()
+            Group {
+                Text(firstNumberEmojis)
+                Text("+")
+                Text(secondNumberEmojis)
+            }
+            .font(Font.system(size: 80))
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.5)
+            .animation(.default, value: message)
+            
             Spacer()
             
-            Text("\(firstNumber) + \(secondNumber) = ")
+            Text("\(firstNumber) + \(secondNumber) =")
                 .font(.largeTitle)
-            TextField("", text: $guessedNumber)
+                .animation(.default, value: message)
+            
+            TextField("", text: $answer)
                 .font(.largeTitle)
-                .textFieldStyle(.roundedBorder)
                 .frame(width: 60)
+                .textFieldStyle(.roundedBorder)
                 .overlay {
                     RoundedRectangle(cornerRadius: 5)
-                        .stroke(Color.gray, lineWidth: 2)
+                        .stroke(.gray, lineWidth: 2)
                 }
+                .multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
+                .focused($isFocused)
+                .disabled(textFieldIsDisabled)
             
             Button("Guess") {
-                guessedNumber()
-                    .buttonStyle[.borderedProminent]
-                    .disabled(guessedNumber.isEmpty)
+                isFocused = false
+                guard let answerValue = Int(answer) else {
+                    return
+                }
+                if answerValue == firstNumber + secondNumber {
+                    playSound(soundName: "correct")
+                    message = "Correct!"
+                } else {
+                    playSound(soundName: "wrong")
+                    message = "Sorry, the correct answer is \(firstNumber+secondNumber)"
+                }
+                textFieldIsDisabled = true
+                buttonIsDisabled = true
             }
+            .buttonStyle(.borderedProminent)
+            .disabled(answer.isEmpty || buttonIsDisabled)
             
-//            func guessANumber() {
-//                textFieldIsFocused = false
-//                
+            Spacer()
+            
+            Text(message)
+                .font(.largeTitle)
+                .fontWeight(.black)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(message == "Correct!" ? .green : .red)
+                .animation(.default, value: message)
+            
+            if message != "" {
+                Button("Play Again?") {
+                    message = ""
+                    answer = ""
+                    textFieldIsDisabled = false
+                    buttonIsDisabled = false
+                    generateEquation()
+                }
             }
-                
-                
         }
         .padding()
+        .onAppear {
+            generateEquation()
+        }
     }
+        
+        func playSound(soundName: String) {
+            guard let soundFile = NSDataAsset(name: soundName) else {
+                print("😡 ERROR: Could not read file named \(soundName)")
+                return
+            }
+            do {
+                audioPlayer = try AVAudioPlayer(data: soundFile.data)
+                audioPlayer.play()
+            } catch {
+                print("😡 ERROR: \(error.localizedDescription) creating audioPlayer")
+            }
+        }
+        func generateEquation () {
+            firstNumber = Int.random(in: 1...10)
+            secondNumber = Int.random(in: 1...10)
+            firstNumberEmojis = String(repeating: emojis.randomElement()!, count: firstNumber)
+            secondNumberEmojis = String(repeating: emojis.randomElement()!, count: secondNumber)
+        }
 }
 
 #Preview {
